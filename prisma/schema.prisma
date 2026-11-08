@@ -1,0 +1,273 @@
+generator client { provider = "prisma-client-js" }
+
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+
+enum Visibility { PUBLIC UNLISTED PRIVATE }
+enum PuzzleStatus { DRAFT PUBLISHED ARCHIVED }
+enum Difficulty { EASY MEDIUM HARD EXPERT }
+enum ProgressStatus { IN_PROGRESS COMPLETED }
+
+model User {
+  id               String               @id @default(cuid())
+  email            String?              @unique
+  name             String?
+  image            String?
+  locale           String               @default("en")
+  theme            String               @default("system")
+  role             String               @default("USER")
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  favorites        Favorite[]
+  progress         PuzzleProgress[]
+  completions      CompletionRecord[]
+  customPuzzles    CustomPuzzle[]
+  participants     MultiplayerParticipant[]
+}
+
+model AnonymousSession {
+  id               String   @id @default(cuid())
+  tokenHash        String   @unique
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+  progress         PuzzleProgress[]
+  customPuzzles    CustomPuzzle[]
+}
+
+model Puzzle {
+  id               String               @id @default(cuid())
+  slug             String               @unique
+  title            String
+  description      String               @db.Text
+  imageUrl         String
+  thumbnailUrl     String
+  width            Int
+  height           Int
+  creditName       String?
+  creditUrl        String?
+  license          String?
+  difficulty       Difficulty           @default(MEDIUM)
+  piecePresets     Int[]
+  mystery          Boolean              @default(false)
+  challenging      Boolean              @default(false)
+  featured         Boolean              @default(false)
+  editorPick       Boolean              @default(false)
+  multiplayer      Boolean              @default(true)
+  status           PuzzleStatus         @default(DRAFT)
+  publishedAt      DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  images           PuzzleImage[]
+  categories       PuzzleCategory[]
+  tags             PuzzleTag[]
+  favorites        Favorite[]
+  progress         PuzzleProgress[]
+  completions      CompletionRecord[]
+  dailyPuzzles     DailyPuzzle[]
+  weeklyMysteries  WeeklyMysteryPuzzle[]
+  rooms            MultiplayerRoom[]
+  customSource     CustomPuzzle?
+  clues            EscapeRoomClue[]
+  leaderboardEntries LeaderboardEntry[]
+  reports          Report[]
+}
+
+model PuzzleImage {
+  id               String   @id @default(cuid())
+  puzzleId         String
+  url              String
+  width            Int
+  height           Int
+  mimeType         String
+  sizeBytes        Int
+  puzzle           Puzzle   @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id               String          @id @default(cuid())
+  slug             String          @unique
+  name             String
+  parentId         String?
+  parent           Category?       @relation("CategoryTree", fields: [parentId], references: [id])
+  children         Category[]      @relation("CategoryTree")
+  puzzles          PuzzleCategory[]
+}
+
+model Tag {
+  id               String       @id @default(cuid())
+  slug             String       @unique
+  name             String
+  puzzles          PuzzleTag[]
+}
+
+model PuzzleCategory {
+  puzzleId         String
+  categoryId       String
+  puzzle           Puzzle   @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+  category         Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  @@id([puzzleId, categoryId])
+}
+
+model PuzzleTag {
+  puzzleId         String
+  tagId            String
+  puzzle           Puzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+  tag              Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  @@id([puzzleId, tagId])
+}
+
+model Favorite {
+  userId           String
+  puzzleId         String
+  createdAt        DateTime @default(now())
+  user             User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  puzzle           Puzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+  @@id([userId, puzzleId])
+}
+
+model PuzzleProgress {
+  id               String          @id @default(cuid())
+  puzzleId         String
+  userId           String?
+  anonymousId      String?
+  pieceCount       Int
+  stateJson        Json
+  elapsedSeconds   Int             @default(0)
+  moves            Int             @default(0)
+  status           ProgressStatus  @default(IN_PROGRESS)
+  updatedAt        DateTime        @updatedAt
+  puzzle           Puzzle          @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+  user             User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anonymous        AnonymousSession? @relation(fields: [anonymousId], references: [id], onDelete: Cascade)
+  @@unique([puzzleId, userId, anonymousId, pieceCount])
+}
+
+model CompletionRecord {
+  id               String   @id @default(cuid())
+  puzzleId         String
+  userId           String?
+  anonymousId      String?
+  pieceCount       Int
+  seconds          Int
+  moves            Int
+  completedAt      DateTime @default(now())
+  puzzle           Puzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+  user             User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model DailyPuzzle {
+  id               String   @id @default(cuid())
+  puzzleId         String
+  date             DateTime @unique
+  timezone         String   @default("UTC")
+  puzzle           Puzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+}
+
+model WeeklyMysteryPuzzle {
+  id               String   @id @default(cuid())
+  puzzleId         String
+  weekKey          String   @unique
+  startsAt         DateTime
+  endsAt           DateTime
+  puzzle           Puzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+}
+
+model MultiplayerRoom {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  puzzleId         String
+  hostUserId       String?
+  stateJson        Json
+  maxPlayers       Int      @default(20)
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  puzzle           Puzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+  participants     MultiplayerParticipant[]
+  events           MultiplayerEvent[]
+}
+
+model MultiplayerParticipant {
+  id               String   @id @default(cuid())
+  roomId           String
+  userId           String?
+  nickname         String
+  color             String
+  connectedAt       DateTime @default(now())
+  lastSeenAt        DateTime @updatedAt
+  room             MultiplayerRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user             User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model MultiplayerEvent {
+  id               String   @id @default(cuid())
+  roomId           String
+  participantId    String?
+  type             String
+  payload          Json
+  createdAt        DateTime @default(now())
+  room             MultiplayerRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model CustomPuzzle {
+  id               String       @id @default(cuid())
+  slug             String       @unique
+  puzzleId         String       @unique
+  creatorId         String?
+  anonymousId       String?
+  visibility        Visibility   @default(UNLISTED)
+  rotationEnabled   Boolean      @default(false)
+  mysteryEnabled    Boolean      @default(false)
+  escapeRoomEnabled Boolean      @default(false)
+  shareTokenHash    String       @unique
+  puzzle            Puzzle       @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+  creator           User?        @relation(fields: [creatorId], references: [id], onDelete: SetNull)
+  anonymous         AnonymousSession? @relation(fields: [anonymousId], references: [id], onDelete: SetNull)
+  shareLinks        ShareLink[]
+}
+
+model ShareLink {
+  id               String   @id @default(cuid())
+  customPuzzleId   String
+  tokenHash        String   @unique
+  expiresAt        DateTime?
+  createdAt        DateTime @default(now())
+  customPuzzle     CustomPuzzle @relation(fields: [customPuzzleId], references: [id], onDelete: Cascade)
+}
+
+model EscapeRoomClue {
+  id               String   @id @default(cuid())
+  puzzleId         String
+  revealOrder      Int
+  clueText         String   @db.Text
+  sectionJson      Json
+  puzzle           Puzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+  @@unique([puzzleId, revealOrder])
+}
+
+model LeaderboardEntry {
+  id               String   @id @default(cuid())
+  puzzleId         String
+  userId           String?
+  pieceCount       Int
+  seconds          Int
+  moves            Int
+  createdAt        DateTime @default(now())
+  puzzle           Puzzle @relation(fields: [puzzleId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id               String   @id @default(cuid())
+  puzzleId         String?
+  reporterId       String?
+  reason           String
+  details          String?  @db.Text
+  status           String   @default("OPEN")
+  createdAt        DateTime @default(now())
+  puzzle           Puzzle? @relation(fields: [puzzleId], references: [id], onDelete: SetNull)
+}
+
+model SiteSetting {
+  key              String   @id
+  valueJson        Json
+  updatedAt        DateTime @updatedAt
+}

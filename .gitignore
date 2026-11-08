@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+test-results/
+playwright-report/
+.vite/
+.vitest-cache/
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

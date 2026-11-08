@@ -1,0 +1,27 @@
+{
+  "name": "lumapiece",
+  "version": "1.0.0",
+  "description": "An original online jigsaw puzzle platform with a Canvas engine and shared rooms.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server.mjs",
+    "test": "vitest run --pool=forks --maxWorkers=1 --no-file-parallelism",
+    "test:watch": "vitest",
+    "e2e": "playwright test"
+  },
+  "keywords": [],
+  "author": "LumaPiece",
+  "license": "UNLICENSED",
+  "type": "module",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  },
+  "dependencies": {
+    "ws": "^8.22.0"
+  }
+}

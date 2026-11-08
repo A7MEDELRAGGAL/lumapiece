@@ -1,0 +1,12 @@
+{
+  "name": "LumaPiece — Online Jigsaw Puzzles",
+  "short_name": "LumaPiece",
+  "description": "Simple, beautiful online jigsaw puzzles for quiet moments.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f1e8",
+  "theme_color": "#f6f1e8",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
